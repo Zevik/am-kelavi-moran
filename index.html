@@ -173,6 +173,52 @@
       alert(details);
     }
 
+    function runDebug() {
+      console.log('Running debug tests...');
+      
+      // בדוק חיבור בסיסי
+      google.script.run
+        .withSuccessHandler(result => {
+          console.log('Connection test result:', result);
+          if (result.success) {
+            alert(`חיבור תקין!\nשם הגיליון: ${result.name}\nגיליונות זמינים: ${result.sheets.join(', ')}`);
+            
+            // נסה לקרוא מכל גיליון
+            result.sheets.forEach(sheetName => {
+              console.log(`Testing sheet: ${sheetName}`);
+              google.script.run
+                .withSuccessHandler(data => {
+                  console.log(`Data from ${sheetName}:`, data);
+                  if (data && data.length > 0) {
+                    alert(`נמצאו נתונים ב-${sheetName}!\nשורות: ${data.length}`);
+                  }
+                })
+                .withFailureHandler(error => {
+                  console.error(`Error reading ${sheetName}:`, error);
+                })
+                .getDataFromSheet(sheetName);
+            });
+          } else {
+            alert(`שגיאת חיבור: ${result.error}`);
+          }
+        })
+        .withFailureHandler(error => {
+          console.error('Connection test failed:', error);
+          alert(`בדיקת החיבור נכשלה: ${error.message}`);
+        })
+        .testConnection();
+
+      // הרץ דיבאג מפורט
+      google.script.run
+        .withSuccessHandler(result => {
+          console.log('Debug completed - check Apps Script logs');
+        })
+        .withFailureHandler(error => {
+          console.error('Debug failed:', error);
+        })
+        .debugSpreadsheet();
+    }
+
     function initAutocomplete() {
       if (!Array.isArray(window.fullData)) return;
       
@@ -273,6 +319,7 @@
 <body>
   <div class="search">
     <label>חיפוש: <input type="text" id="search" oninput="applyFilters()"></label>
+    <button onclick="runDebug()" style="margin-right: 10px; padding: 8px; background: #ff6b35; color: white; border: none; border-radius: 4px;">🔍 בדוק חיבור</button>
   </div>
 
   <div class="filters">

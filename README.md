@@ -5,16 +5,25 @@
 ### הבעיה הנוכחית
 הנתונים חוזרים כ-`null` מהפונקציה `getData()`, כפי שניתן לראות בקונסול.
 
-### פתרון מהיר
-1. לך ל-Google Apps Script של הפרויקט
-2. במקום השורה הראשונה:
-   ```javascript
-   const SHEET_NAME = 'Sheet1';
-   ```
-   שנה ל:
-   ```javascript
-   const SHEET_NAME = 'Sheet2';
-   ```
+### צעדי אבחון (חדש! 🔥)
+1. **העתק את קובץ `debug.js`** ל-Google Apps Script שלך (יצור קובץ חדש)
+2. **רענן את האפליקציה** ולחץ על כפתור "🔍 בדוק חיבור"
+3. **בדוק את הלוגים** ב-Google Apps Script (View > Logs או Executions)
+4. **הודע לי מה המערכת מצאה**
+
+### פתרונות אפשריים
+
+#### אם הגיליון נקרא Sheet2:
+```javascript
+const SHEET_NAME = 'Sheet2';
+```
+
+#### אם יש בעיית הרשאות:
+1. וודא שה-Apps Script מחובר לגיליון הנכון
+2. בדוק שיש הרשאות קריאה
+
+#### אם הנתונים בפורמט שונה:
+העתק את הפונקציות החדשות מ-`debug.js`
 
 ### פתרון מתקדם (מומלץ)
 החלף את הפונקציה `getData()` ב-Code.js עם הקוד הבא:
