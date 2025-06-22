@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>חיפוש וסינון כרטיסים</title>
+  <style>
+    body { font-family: sans-serif; direction: rtl; margin: 2em; }
+    .card { border: 1px solid #ccc; border-radius: 8px; padding: 1em; margin-bottom: 1em; box-shadow: 1px 1px 5px rgba(0,0,0,0.1); }
+    .card h3 { margin: 0 0 0.5em 0; }
+    .tags { font-size: 0.9em; color: #555; margin-bottom: 0.5em; }
+    .footer { font-size: 0.8em; color: #777; margin-top: 1em; }
+    .button { margin-left: 1em; padding: 0.3em 0.6em; cursor: pointer; border: none; border-radius: 4px; background: #2196F3; color: white; }
+    .filters, .search { margin-bottom: 1em; }
+    select[multiple] { height: 100px; width: 200px; }
+    .search input[type="text"] { 
+      padding: 8px; 
+      font-size: 16px; 
+      border: 2px solid #ddd; 
+      border-radius: 4px; 
+      width: 300px;
+      direction: rtl;
+    }
+    .search input[type="text"]:focus {
+      border-color: #2196F3;
+      outline: none;
+    }
+    .search label {
+      position: relative;
+      display: inline-block;
+    }
+  </style>
+  <script>
+    function loadApp() {
+      google.script.run
+        .withSuccessHandler(data => {
+          console.log('Data received:', data);
+          if (!data || !Array.isArray(data) || data.length === 0) {
+            console.error('Invalid or empty data format received:', data);
+            
+            // Try to get sheet names for debugging
+            google.script.run
+              .withSuccessHandler(sheetNames => {
+                console.log('Available sheets:', sheetNames);
+                alert(`שגיאה: לא נמצאו נתונים בגיליון.\nגיליונות זמינים: ${sheetNames.join(', ')}\nבדוק שהגיליון נקרא "Sheet1" ומכיל נתונים.`);
+              })
+              .withFailureHandler(error => {
+                console.error('Error getting sheet names:', error);
+                alert('שגיאה: הנתונים שהתקבלו אינם בפורמט הנכון או ריקים');
+              })
+              .getSheetNames();
+            return;
+          }
+          window.fullData = data;
+          renderCards(data);
+          initAutocomplete();
+        })
+        .withFailureHandler(error => {
+          console.error('Error loading data:', error);
+          alert('שגיאה בטעינת הנתונים: ' + error.message);
+        })
+        .getData();
+
+      google.script.run
+        .withSuccessHandler(renderFilters)
+        .withFailureHandler(error => {
+          console.error('Error loading filter values:', error);
+          console.log('Creating filters manually from loaded data...');
+          // Try to create filters from the main data if available
+          setTimeout(() => {
+            if (window.fullData && Array.isArray(window.fullData)) {
+              createFiltersFromData();
+            }
+          }, 1000);
+        })
+        .getUniqueValues(['למי זה', 'קטגוריה', 'תת קטגוריה']);
+    }
+
+    function createFiltersFromData() {
+      if (!window.fullData || !Array.isArray(window.fullData)) return;
+      
+      const filterMappings = {
+        'למי זה': 1,    // column B (index 1)
+        'קטגוריה': 2,   // column C (index 2) 
+        'תת קטגוריה': 3 // column D (index 3)
+      };
+      
+      Object.keys(filterMappings).forEach(filterName => {
+        const columnIndex = filterMappings[filterName];
+        const select = document.getElementById('filter_' + filterName);
+        if (!select) return;
+        
+        const uniqueValues = new Set();
+        window.fullData.forEach(row => {
+          if (row[columnIndex]) {
+            const value = row[columnIndex].toString().trim();
+            if (value) uniqueValues.add(value);
+          }
+        });
+        
+        select.innerHTML = '';
+        Array.from(uniqueValues).sort().forEach(val => {
+          const option = document.createElement('option');
+          option.value = val;
+          option.textContent = val;
+          select.appendChild(option);
+        });
+      });
+    }
+
+    function renderFilters(values) {
+      console.log('renderFilters received:', values);
+      
+      // Check if values is valid
+      if (!values || typeof values !== 'object') {
+        console.error('Invalid values received in renderFilters:', values);
+        return;
+      }
+      
+      ['למי זה','קטגוריה','תת קטגוריה'].forEach(colName => {
+        const select = document.getElementById('filter_' + colName);
+        if (!select) {
+          console.warn('Select element not found for:', colName);
+          return;
+        }
+        
+        // Check if the column exists and has data
+        if (!values[colName] || !Array.isArray(values[colName])) {
+          console.warn('No data found for column:', colName, 'in values:', values);
+          return;
+        }
+        
+        // Clear existing options first
+        select.innerHTML = '';
+        
+        values[colName].forEach(val => {
+          const option = document.createElement('option');
+          option.value = val;
+          option.textContent = val;
+          select.appendChild(option);
+        });
+      });
+    }
+
+    function renderCards(data) {
+      const container = document.getElementById('cards');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      if (!Array.isArray(data) || data.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 2em; color: #666;">אין נתונים להצגה</div>';
+        return;
+      }
+      
+      data.forEach(row => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${row[2] || ''}</h3>
+          <div class="tags">${row[3] || ''}</div>
+          <div>${row[6] || ''}</div>
+          <div class="footer">
+            מזהה: ${row[0] || ''} | תאריך: ${row[5] || ''}
+          </div>
+          <button class="button" onclick="showDetails('${(row[7] || '').replace(/'/g, "\\'")}')">לחץ לפרטים נוספים</button>
+          <a href="${row[4] || '#'}" target="_blank" class="button">למידע נוסף</a>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function showDetails(details) {
+      alert(details);
+    }
+
+    function initAutocomplete() {
+      if (!Array.isArray(window.fullData)) return;
+      
+      const searchInput = document.getElementById('search');
+      const autocompleteContainer = document.createElement('div');
+      autocompleteContainer.id = 'autocomplete-container';
+      autocompleteContainer.style.cssText = `
+        position: relative;
+        max-height: 200px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ccc;
+        border-top: none;
+        display: none;
+        z-index: 1000;
+      `;
+      
+      searchInput.parentNode.appendChild(autocompleteContainer);
+      
+      // Collect all searchable text
+      const searchableTexts = new Set();
+      window.fullData.forEach(row => {
+        [row[7], row[2], row[3]].forEach(cell => {
+          if (cell) {
+            const words = cell.toString().split(/\s+/);
+            words.forEach(word => {
+              if (word.length > 2) {
+                searchableTexts.add(word);
+              }
+            });
+          }
+        });
+      });
+      
+      window.searchSuggestions = Array.from(searchableTexts).sort();
+      
+      searchInput.addEventListener('input', function(e) {
+        const value = e.target.value.trim();
+        if (value.length < 2) {
+          autocompleteContainer.style.display = 'none';
+          return;
+        }
+        
+        const suggestions = window.searchSuggestions.filter(suggestion => 
+          suggestion.toLowerCase().includes(value.toLowerCase())
+        ).slice(0, 10);
+        
+        if (suggestions.length === 0) {
+          autocompleteContainer.style.display = 'none';
+          return;
+        }
+        
+        autocompleteContainer.innerHTML = suggestions.map(suggestion => 
+          `<div style="padding: 8px; cursor: pointer; border-bottom: 1px solid #eee;" 
+               onmouseover="this.style.background='#f0f0f0'" 
+               onmouseout="this.style.background='white'"
+               onclick="selectSuggestion('${suggestion}')">${suggestion}</div>`
+        ).join('');
+        
+        autocompleteContainer.style.display = 'block';
+      });
+      
+      // Hide autocomplete when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !autocompleteContainer.contains(e.target)) {
+          autocompleteContainer.style.display = 'none';
+        }
+      });
+    }
+    
+    function selectSuggestion(suggestion) {
+      document.getElementById('search').value = suggestion;
+      document.getElementById('autocomplete-container').style.display = 'none';
+      applyFilters();
+    }
+
+    function applyFilters() {
+      if (!Array.isArray(window.fullData)) return;
+      const search = document.getElementById('search').value.trim();
+      const bVals = Array.from(document.getElementById('filter_למי זה')?.selectedOptions || []).map(o => o.value);
+      const cVals = Array.from(document.getElementById('filter_קטגוריה')?.selectedOptions || []).map(o => o.value);
+      const dVals = Array.from(document.getElementById('filter_תת קטגוריה')?.selectedOptions || []).map(o => o.value);
+
+      const filtered = window.fullData.filter(row => {
+        const searchMatch = [row[7], row[2], row[3]].some(cell => (cell || '').toLowerCase().includes(search.toLowerCase()));
+        const bMatch = bVals.length === 0 || bVals.some(v => (row[1] || '').includes(v));
+        const cMatch = cVals.length === 0 || cVals.some(v => (row[2] || '').includes(v));
+        const dMatch = dVals.length === 0 || dVals.some(v => (row[3] || '').includes(v));
+        return searchMatch && bMatch && cMatch && dMatch;
+      });
+
+      renderCards(filtered);
+    }
+
+    window.onload = () => loadApp();
+  </script>
+</head>
+<body>
+  <div class="search">
+    <label>חיפוש: <input type="text" id="search" oninput="applyFilters()"></label>
+  </div>
+
+  <div class="filters">
+    <label>סינון לפי "למי זה":<br><select id="filter_למי זה" multiple onchange="applyFilters()"></select></label>
+    <label>סינון לפי "קטגוריה":<br><select id="filter_קטגוריה" multiple onchange="applyFilters()"></select></label>
+    <label>סינון לפי "תת קטגוריה":<br><select id="filter_תת קטגוריה" multiple onchange="applyFilters()"></select></label>
+  </div>
+
+  <div id="cards"></div>
+</body>
+</html>
