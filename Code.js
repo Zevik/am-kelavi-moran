@@ -1,4 +1,4 @@
-const SHEET_NAME = 'Sheet1';
+const SHEET_NAME = 'Sheet2';
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
@@ -22,37 +22,34 @@ function getSheetNames() {
 
 function getData() {
   try {
-    console.log('Attempting to get data from sheet:', SHEET_NAME);
+    console.log('Attempting to get data...');
     
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    console.log('Spreadsheet found:', spreadsheet.getName());
+    const sheets = spreadsheet.getSheets();
     
-    const sheet = spreadsheet.getSheetByName(SHEET_NAME);
-    if (!sheet) {
-      throw new Error(`Sheet "${SHEET_NAME}" not found. Available sheets: ${spreadsheet.getSheets().map(s => s.getName()).join(', ')}`);
+    // Try to find a sheet with data
+    for (let sheet of sheets) {
+      console.log('Checking sheet:', sheet.getName());
+      
+      const values = sheet.getDataRange().getValues();
+      if (values.length > 1) { // Has header + at least one row of data
+        console.log(`Found data in sheet: ${sheet.getName()}, rows: ${values.length}`);
+        
+        // Remove header row
+        values.shift();
+        
+        // Filter out completely empty rows
+        const filteredValues = values.filter(row => 
+          row.some(cell => cell !== null && cell !== undefined && cell !== '')
+        );
+        
+        console.log('Data after filtering empty rows:', filteredValues.length);
+        return filteredValues;
+      }
     }
     
-    console.log('Sheet found:', sheet.getName());
-    
-    const values = sheet.getDataRange().getValues();
-    console.log('Raw data retrieved, rows:', values.length);
-    
-    if (values.length === 0) {
-      console.log('No data found in sheet');
-      return [];
-    }
-    
-    // Remove header row
-    values.shift();
-    console.log('Data after removing header, rows:', values.length);
-    
-    // Filter out completely empty rows
-    const filteredValues = values.filter(row => 
-      row.some(cell => cell !== null && cell !== undefined && cell !== '')
-    );
-    
-    console.log('Data after filtering empty rows:', filteredValues.length);
-    return filteredValues;
+    console.log('No data found in any sheet');
+    return [];
     
   } catch (error) {
     console.error('Error in getData:', error);
@@ -62,8 +59,24 @@ function getData() {
 
 function getUniqueValues(columnNames) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    const data = sheet.getDataRange().getValues();
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheets = spreadsheet.getSheets();
+    
+    // Find the sheet with data
+    let dataSheet = null;
+    for (let sheet of sheets) {
+      const values = sheet.getDataRange().getValues();
+      if (values.length > 1) {
+        dataSheet = sheet;
+        break;
+      }
+    }
+    
+    if (!dataSheet) {
+      throw new Error('No sheet with data found');
+    }
+    
+    const data = dataSheet.getDataRange().getValues();
     const headers = data.shift();
     
     console.log('Headers found:', headers);
