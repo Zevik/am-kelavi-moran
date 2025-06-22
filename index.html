@@ -72,14 +72,15 @@
             }
           }, 1000);
         })
-        .getUniqueValues(['למי זה ', 'קטגוריה', 'תת קטגוריה']);
+        .getUniqueValues();
     }
 
     function createFiltersFromData() {
       if (!window.fullData || !Array.isArray(window.fullData)) return;
       
+      // Hard-coded column mapping based on spreadsheet structure
       const filterMappings = {
-        'למי זה ': 1,    // column B (index 1) - שים לב לרווח!
+        'למי זה ': 1,    // column B (index 1)
         'קטגוריה': 2,   // column C (index 2) 
         'תת קטגוריה': 3 // column D (index 3)
       };
@@ -93,7 +94,13 @@
         window.fullData.forEach(row => {
           if (row[columnIndex]) {
             const value = row[columnIndex].toString().trim();
-            if (value) uniqueValues.add(value);
+            if (value) {
+              // Split by comma if multiple values in one cell
+              value.split(',').forEach(v => {
+                const trimmed = v.trim();
+                if (trimmed) uniqueValues.add(trimmed);
+              });
+            }
           }
         });
         
@@ -201,7 +208,7 @@
                 .withFailureHandler(error => {
                   console.error(`Error reading ${sheetName}:`, error);
                 })
-                .getDataFromSheet(sheetName);
+                .getData(); // No need for sheet name parameter
             });
           } else {
             alert(`שגיאת חיבור: ${result.error}`);

@@ -1,4 +1,4 @@
-// פונקציית דיבאג מתקדמת לזיהוי הבעיה
+// פונקציות דיבאג פשוטות לפי מספרי עמודות
 function debugSpreadsheet() {
   try {
     console.log('=== DEBUG SPREADSHEET ===');
@@ -6,42 +6,40 @@ function debugSpreadsheet() {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     console.log('Spreadsheet ID:', spreadsheet.getId());
     console.log('Spreadsheet Name:', spreadsheet.getName());
-    console.log('Spreadsheet URL:', spreadsheet.getUrl());
     
-    const sheets = spreadsheet.getSheets();
-    console.log('Total sheets:', sheets.length);
+    const sheet = spreadsheet.getSheetByName('Sheet1');
+    if (!sheet) {
+      console.log('Sheet1 not found');
+      return;
+    }
     
-    sheets.forEach((sheet, index) => {
-      console.log(`\n--- Sheet ${index + 1} ---`);
-      console.log('Name:', sheet.getName());
-      console.log('Sheet ID:', sheet.getSheetId());
-      
-      try {
-        const range = sheet.getDataRange();
-        console.log('Data range:', range.getA1Notation());
-        
-        const values = range.getValues();
-        console.log('Total rows:', values.length);
-        console.log('Total columns:', values.length > 0 ? values[0].length : 0);
-        
-        if (values.length > 0) {
-          console.log('Headers (first row):', values[0]);
-        }
-        
-        if (values.length > 1) {
-          console.log('Sample data (second row):', values[1]);
-        }
-        
-        // בדוק אם יש נתונים אמיתיים
-        const nonEmptyRows = values.filter(row => 
-          row.some(cell => cell !== null && cell !== undefined && cell !== '')
-        );
-        console.log('Non-empty rows:', nonEmptyRows.length);
-        
-      } catch (error) {
-        console.error('Error reading sheet data:', error);
-      }
-    });
+    console.log('Sheet found: Sheet1');
+    
+    const range = sheet.getDataRange();
+    console.log('Data range:', range.getA1Notation());
+    
+    const values = range.getValues();
+    console.log('Total rows:', values.length);
+    console.log('Total columns:', values.length > 0 ? values[0].length : 0);
+    
+    if (values.length > 0) {
+      console.log('Headers (row 1):', values[0]);
+    }
+    
+    if (values.length > 1) {
+      console.log('Sample data (row 2):', values[1]);
+    }
+    
+    // Column mapping
+    console.log('Column mapping:');
+    console.log('0: Post ID');
+    console.log('1: למי זה');
+    console.log('2: קטגוריה');
+    console.log('3: תת קטגוריה');
+    console.log('4: שם המשרד/הארגון');
+    console.log('5: לינק לפרטים');
+    console.log('6: מתי עודכן');
+    console.log('7: פרטים');
     
     console.log('=== END DEBUG ===');
     
@@ -64,40 +62,5 @@ function testConnection() {
       success: false,
       error: error.message
     };
-  }
-}
-
-// פונקציה לקריאת נתונים מגיליון ספציפי
-function getDataFromSheet(sheetName) {
-  try {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName(sheetName);
-    
-    if (!sheet) {
-      throw new Error(`Sheet "${sheetName}" not found`);
-    }
-    
-    const values = sheet.getDataRange().getValues();
-    console.log(`Data from ${sheetName}:`, values.length, 'rows');
-    
-    if (values.length === 0) {
-      return [];
-    }
-    
-    // הסר כותרת
-    const headers = values.shift();
-    console.log('Headers:', headers);
-    
-    // סנן שורות ריקות
-    const filteredData = values.filter(row => 
-      row.some(cell => cell !== null && cell !== undefined && cell !== '')
-    );
-    
-    console.log('Filtered data:', filteredData.length, 'rows');
-    return filteredData;
-    
-  } catch (error) {
-    console.error('Error in getDataFromSheet:', error);
-    throw error;
   }
 }

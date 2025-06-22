@@ -22,34 +22,34 @@ function getSheetNames() {
 
 function getData() {
   try {
-    console.log('Attempting to get data...');
+    console.log('Attempting to get data from Sheet1...');
     
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheets = spreadsheet.getSheets();
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME);
     
-    // Try to find a sheet with data
-    for (let sheet of sheets) {
-      console.log('Checking sheet:', sheet.getName());
-      
-      const values = sheet.getDataRange().getValues();
-      if (values.length > 1) { // Has header + at least one row of data
-        console.log(`Found data in sheet: ${sheet.getName()}, rows: ${values.length}`);
-        
-        // Remove header row
-        values.shift();
-        
-        // Filter out completely empty rows
-        const filteredValues = values.filter(row => 
-          row.some(cell => cell !== null && cell !== undefined && cell !== '')
-        );
-        
-        console.log('Data after filtering empty rows:', filteredValues.length);
-        return filteredValues;
-      }
+    if (!sheet) {
+      throw new Error(`Sheet "${SHEET_NAME}" not found`);
     }
     
-    console.log('No data found in any sheet');
-    return [];
+    const values = sheet.getDataRange().getValues();
+    console.log('Raw data retrieved, rows:', values.length);
+    
+    if (values.length === 0) {
+      console.log('No data found in sheet');
+      return [];
+    }
+    
+    // Remove header row
+    values.shift();
+    console.log('Data after removing header, rows:', values.length);
+    
+    // Filter out completely empty rows
+    const filteredValues = values.filter(row => 
+      row.some(cell => cell !== null && cell !== undefined && cell !== '')
+    );
+    
+    console.log('Data after filtering empty rows:', filteredValues.length);
+    return filteredValues;
     
   } catch (error) {
     console.error('Error in getData:', error);
@@ -57,80 +57,58 @@ function getData() {
   }
 }
 
-function getUniqueValues(columnNames) {
+function getUniqueValues() {
   try {
+    console.log('Getting unique values by column numbers...');
+    
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheets = spreadsheet.getSheets();
+    const sheet = spreadsheet.getSheetByName(SHEET_NAME);
     
-    // Find the sheet with data
-    let dataSheet = null;
-    for (let sheet of sheets) {
-      const values = sheet.getDataRange().getValues();
-      if (values.length > 1) {
-        dataSheet = sheet;
-        break;
-      }
+    if (!sheet) {
+      throw new Error(`Sheet "${SHEET_NAME}" not found`);
     }
     
-    if (!dataSheet) {
-      throw new Error('No sheet with data found');
-    }
+    const data = sheet.getDataRange().getValues();
+    data.shift(); // Remove header row
     
-    const data = dataSheet.getDataRange().getValues();
-    const headers = data.shift();
+    // Column mapping based on the actual spreadsheet structure:
+    // 0: Post ID, 1: למי זה, 2: קטגוריה, 3: תת קטגוריה
+    const columnMapping = {
+      'למי זה ': 1,
+      'קטגוריה': 2,
+      'תת קטגוריה': 3
+    };
     
-    console.log('Headers found:', headers);
-    console.log('Looking for columns:', columnNames);
-
     let result = {};
-    columnNames.forEach(name => {
-      const index = headers.indexOf(name);
-      console.log(`Column "${name}" found at index:`, index);
+    
+    Object.keys(columnMapping).forEach(filterName => {
+      const columnIndex = columnMapping[filterName];
+      console.log(`Processing column ${columnIndex} for ${filterName}`);
       
-      if (index === -1) {
-        // Try to find similar column names (case insensitive, with trim)
-        const similarIndex = headers.findIndex(h => 
-          h && h.toString().trim().toLowerCase() === name.toLowerCase()
-        );
-        console.log(`Similar column for "${name}" found at index:`, similarIndex);
-        
-        if (similarIndex === -1) {
-          result[name] = []; // Return empty array if column not found
-          return;
-        } else {
-          result[name] = extractUniqueValues(data, similarIndex);
-          return;
+      const uniqueValues = new Set();
+      
+      data.forEach(row => {
+        if (row[columnIndex]) {
+          const value = row[columnIndex].toString().trim();
+          if (value) {
+            // Split by comma if multiple values in one cell
+            value.split(',').forEach(v => {
+              const trimmed = v.trim();
+              if (trimmed) uniqueValues.add(trimmed);
+            });
+          }
         }
-      }
+      });
       
-      result[name] = extractUniqueValues(data, index);
+      result[filterName] = Array.from(uniqueValues).sort();
+      console.log(`Found ${result[filterName].length} unique values for ${filterName}`);
     });
-
-    console.log('Final result:', result);
+    
+    console.log('Final unique values result:', result);
     return result;
     
   } catch (error) {
     console.error('Error in getUniqueValues:', error);
     throw new Error('שגיאה בטעינת ערכי הסינון: ' + error.message);
   }
-}
-
-function extractUniqueValues(data, columnIndex) {
-  const set = new Set();
-  
-  data.forEach(row => {
-    if (row.length <= columnIndex) return;
-    const cell = row[columnIndex];
-
-    if (typeof cell === 'string') {
-      cell.split(',').forEach(v => {
-        const trimmed = v.trim();
-        if (trimmed) set.add(trimmed);
-      });
-    } else if (cell !== undefined && cell !== null && cell !== '') {
-      set.add(String(cell).trim());
-    }
-  });
-
-  return Array.from(set).filter(v => v.length > 0).sort();
 }
