@@ -72,14 +72,14 @@
             }
           }, 1000);
         })
-        .getUniqueValues(['למי זה', 'קטגוריה', 'תת קטגוריה']);
+        .getUniqueValues(['למי זה ', 'קטגוריה', 'תת קטגוריה']);
     }
 
     function createFiltersFromData() {
       if (!window.fullData || !Array.isArray(window.fullData)) return;
       
       const filterMappings = {
-        'למי זה': 1,    // column B (index 1)
+        'למי זה ': 1,    // column B (index 1) - שים לב לרווח!
         'קטגוריה': 2,   // column C (index 2) 
         'תת קטגוריה': 3 // column D (index 3)
       };
@@ -116,7 +116,7 @@
         return;
       }
       
-      ['למי זה','קטגוריה','תת קטגוריה'].forEach(colName => {
+      ['למי זה ','קטגוריה','תת קטגוריה'].forEach(colName => {
         const select = document.getElementById('filter_' + colName);
         if (!select) {
           console.warn('Select element not found for:', colName);
@@ -157,13 +157,18 @@
         card.className = 'card';
         card.innerHTML = `
           <h3>${row[2] || ''}</h3>
-          <div class="tags">${row[3] || ''}</div>
-          <div>${row[6] || ''}</div>
+          <div class="tags">
+            <strong>למי זה:</strong> ${row[1] || ''} | 
+            <strong>קטגוריה:</strong> ${row[2] || ''} | 
+            <strong>תת קטגוריה:</strong> ${row[3] || ''}
+          </div>
+          <div><strong>ארגון:</strong> ${row[4] || ''}</div>
+          <div style="margin-top: 1em;">${row[7] || ''}</div>
           <div class="footer">
-            מזהה: ${row[0] || ''} | תאריך: ${row[5] || ''}
+            מזהה: ${row[0] || ''} | עודכן: ${row[6] || ''}
           </div>
           <button class="button" onclick="showDetails('${(row[7] || '').replace(/'/g, "\\'")}')">לחץ לפרטים נוספים</button>
-          <a href="${row[4] || '#'}" target="_blank" class="button">למידע נוסף</a>
+          <a href="${row[5] || '#'}" target="_blank" class="button">למידע נוסף</a>
         `;
         container.appendChild(card);
       });
@@ -298,15 +303,15 @@
     function applyFilters() {
       if (!Array.isArray(window.fullData)) return;
       const search = document.getElementById('search').value.trim();
-      const bVals = Array.from(document.getElementById('filter_למי זה')?.selectedOptions || []).map(o => o.value);
+      const bVals = Array.from(document.getElementById('filter_למי זה ')?.selectedOptions || []).map(o => o.value);
       const cVals = Array.from(document.getElementById('filter_קטגוריה')?.selectedOptions || []).map(o => o.value);
       const dVals = Array.from(document.getElementById('filter_תת קטגוריה')?.selectedOptions || []).map(o => o.value);
 
       const filtered = window.fullData.filter(row => {
         const searchMatch = [row[7], row[2], row[3]].some(cell => (cell || '').toLowerCase().includes(search.toLowerCase()));
-        const bMatch = bVals.length === 0 || bVals.some(v => (row[1] || '').includes(v));
-        const cMatch = cVals.length === 0 || cVals.some(v => (row[2] || '').includes(v));
-        const dMatch = dVals.length === 0 || dVals.some(v => (row[3] || '').includes(v));
+        const bMatch = bVals.length === 0 || bVals.some(v => (row[1] || '').includes(v)); // עמודה B - "למי זה "
+        const cMatch = cVals.length === 0 || cVals.some(v => (row[2] || '').includes(v)); // עמודה C - "קטגוריה"
+        const dMatch = dVals.length === 0 || dVals.some(v => (row[3] || '').includes(v)); // עמודה D - "תת קטגוריה"
         return searchMatch && bMatch && cMatch && dMatch;
       });
 
@@ -323,7 +328,7 @@
   </div>
 
   <div class="filters">
-    <label>סינון לפי "למי זה":<br><select id="filter_למי זה" multiple onchange="applyFilters()"></select></label>
+    <label>סינון לפי "למי זה":<br><select id="filter_למי זה " multiple onchange="applyFilters()"></select></label>
     <label>סינון לפי "קטגוריה":<br><select id="filter_קטגוריה" multiple onchange="applyFilters()"></select></label>
     <label>סינון לפי "תת קטגוריה":<br><select id="filter_תת קטגוריה" multiple onchange="applyFilters()"></select></label>
   </div>

@@ -1,4 +1,4 @@
-const SHEET_NAME = 'Sheet2';
+const SHEET_NAME = 'Sheet1';
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
